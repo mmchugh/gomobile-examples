@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"log"
+	"time"
 
 	"golang.org/x/mobile/app"
 	"golang.org/x/mobile/app/debug"
@@ -32,6 +33,7 @@ var (
 	buf        gl.Buffer
 
 	touchLoc geom.Point
+	started  time.Time
 )
 
 func main() {
@@ -61,6 +63,8 @@ func start() {
 	projection = gl.GetUniformLocation(program, "projection")
 	view = gl.GetUniformLocation(program, "view")
 	model = gl.GetUniformLocation(program, "model")
+
+	started = time.Now()
 }
 
 func stop() {
@@ -77,6 +81,8 @@ func touch(t event.Touch, c event.Config) {
 }
 
 func draw(c event.Config) {
+	since := time.Now().Sub(started)
+
 	gl.ClearColor(0, 0, 0, 1)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 
@@ -94,6 +100,7 @@ func draw(c event.Config) {
 	gl.UniformMatrix4fv(view, Mat2Float(m))
 
 	m.Identity()
+	m.Rotate(m, f32.Radian(since.Seconds()), &f32.Vec3{0, 1, 0})
 	gl.UniformMatrix4fv(model, Mat2Float(m))
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, buf)
