@@ -57,7 +57,6 @@ func start() {
 	gl.BufferData(gl.ARRAY_BUFFER, cubeData, gl.STATIC_DRAW)
 
 	vertCoord = gl.GetAttribLocation(program, "vertCoord")
-	//	vertTexCoord = gl.GetAttribLocation(program, "vertTexCoord")
 
 	projection = gl.GetUniformLocation(program, "projection")
 	view = gl.GetUniformLocation(program, "view")
@@ -78,7 +77,7 @@ func touch(t event.Touch, c event.Config) {
 }
 
 func draw(c event.Config) {
-	gl.ClearColor(1, 0, 0, 1)
+	gl.ClearColor(0, 0, 0, 1)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 
 	gl.UseProgram(program)
@@ -90,6 +89,7 @@ func draw(c event.Config) {
 	eye := f32.Vec3{3, 3, 3}
 	center := f32.Vec3{0, 0, 0}
 	up := f32.Vec3{0, 1, 0}
+
 	m.LookAt(&eye, &center, &up)
 	gl.UniformMatrix4fv(view, Mat2Float(m))
 
@@ -99,7 +99,7 @@ func draw(c event.Config) {
 	gl.BindBuffer(gl.ARRAY_BUFFER, buf)
 
 	gl.EnableVertexAttribArray(vertCoord)
-	gl.VertexAttribPointer(vertCoord, coordsPerVertex, gl.FLOAT, false, 5, 0)
+	gl.VertexAttribPointer(vertCoord, coordsPerVertex, gl.FLOAT, false, 0, 0)
 	//	gl.EnableVertexAttribArray(texture)
 	//	gl.VertexAttribPointer(vertCoord, texCoordsPerVertex, gl.FLOAT, false, 5, 3)
 
@@ -113,79 +113,72 @@ func draw(c event.Config) {
 var cubeData = f32.Bytes(binary.LittleEndian,
 	//  X, Y, Z, U, V
 	// Bottom
-	-1.0, -1.0, -1.0, 0.0, 0.0,
-	1.0, -1.0, -1.0, 1.0, 0.0,
-	-1.0, -1.0, 1.0, 0.0, 1.0,
-	1.0, -1.0, -1.0, 1.0, 0.0,
-	1.0, -1.0, 1.0, 1.0, 1.0,
-	-1.0, -1.0, 1.0, 0.0, 1.0,
+	-1.0, -1.0, -1.0,
+	1.0, -1.0, -1.0,
+	-1.0, -1.0, 1.0,
+	1.0, -1.0, -1.0,
+	1.0, -1.0, 1.0,
+	-1.0, -1.0, 1.0,
 
 	// Top
-	-1.0, 1.0, -1.0, 0.0, 0.0,
-	-1.0, 1.0, 1.0, 0.0, 1.0,
-	1.0, 1.0, -1.0, 1.0, 0.0,
-	1.0, 1.0, -1.0, 1.0, 0.0,
-	-1.0, 1.0, 1.0, 0.0, 1.0,
-	1.0, 1.0, 1.0, 1.0, 1.0,
+	-1.0, 1.0, -1.0,
+	-1.0, 1.0, 1.0,
+	1.0, 1.0, -1.0,
+	1.0, 1.0, -1.0,
+	-1.0, 1.0, 1.0,
+	1.0, 1.0, 1.0,
 
 	// Front
-	-1.0, -1.0, 1.0, 1.0, 0.0,
-	1.0, -1.0, 1.0, 0.0, 0.0,
-	-1.0, 1.0, 1.0, 1.0, 1.0,
-	1.0, -1.0, 1.0, 0.0, 0.0,
-	1.0, 1.0, 1.0, 0.0, 1.0,
-	-1.0, 1.0, 1.0, 1.0, 1.0,
+	-1.0, -1.0, 1.0,
+	1.0, -1.0, 1.0,
+	-1.0, 1.0, 1.0,
+	1.0, -1.0, 1.0,
+	1.0, 1.0, 1.0,
+	-1.0, 1.0, 1.0,
 
 	// Back
-	-1.0, -1.0, -1.0, 0.0, 0.0,
-	-1.0, 1.0, -1.0, 0.0, 1.0,
-	1.0, -1.0, -1.0, 1.0, 0.0,
-	1.0, -1.0, -1.0, 1.0, 0.0,
-	-1.0, 1.0, -1.0, 0.0, 1.0,
-	1.0, 1.0, -1.0, 1.0, 1.0,
+	-1.0, -1.0, -1.0,
+	-1.0, 1.0, -1.0,
+	1.0, -1.0, -1.0,
+	1.0, -1.0, -1.0,
+	-1.0, 1.0, -1.0,
+	1.0, 1.0, -1.0,
 
 	// Left
-	-1.0, -1.0, 1.0, 0.0, 1.0,
-	-1.0, 1.0, -1.0, 1.0, 0.0,
-	-1.0, -1.0, -1.0, 0.0, 0.0,
-	-1.0, -1.0, 1.0, 0.0, 1.0,
-	-1.0, 1.0, 1.0, 1.0, 1.0,
-	-1.0, 1.0, -1.0, 1.0, 0.0,
+	-1.0, -1.0, 1.0,
+	-1.0, 1.0, -1.0,
+	-1.0, -1.0, -1.0,
+	-1.0, -1.0, 1.0,
+	-1.0, 1.0, 1.0,
+	-1.0, 1.0, -1.0,
 
 	// Right
-	1.0, -1.0, 1.0, 1.0, 1.0,
-	1.0, -1.0, -1.0, 1.0, 0.0,
-	1.0, 1.0, -1.0, 0.0, 0.0,
-	1.0, -1.0, 1.0, 1.0, 1.0,
-	1.0, 1.0, -1.0, 0.0, 0.0,
-	1.0, 1.0, 1.0, 0.0, 1.0,
+	1.0, -1.0, 1.0,
+	1.0, -1.0, -1.0,
+	1.0, 1.0, -1.0,
+	1.0, -1.0, 1.0,
+	1.0, 1.0, -1.0,
+	1.0, 1.0, 1.0,
 )
 
-const (
+var (
 	coordsPerVertex    = 3
 	texCoordsPerVertex = 2
-	vertexCount        = 36
+	vertexCount        = len(cubeData) / coordsPerVertex
 )
 
-const vertexShader = `#version 330
+const vertexShader = `#version 100
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 model;
 
-in vec3 vertCoord;
-//in vec2 vertTexCoord;
-out vec2 fragTexCoord;
+attribute vec3 vertCoord;
 
 void main() {
-//    fragTexCoord = vertTexCoord;
     gl_Position = projection * view * model * vec4(vertCoord, 1);
 }`
 
-const fragmentShader = `#version 330
-uniform sampler2D tex;
-in vec2 fragTexCoord;
-
+const fragmentShader = `#version 100
 void main() {
-//    gl_FragColor = texture(tex, fragTexCoord);
-    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0)
+    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
 }`
