@@ -2,16 +2,20 @@ package main
 
 import (
 	"encoding/binary"
+	"image"
+	image_draw "image/draw"
+	_ "image/png"
 	"log"
 	"time"
 
 	"golang.org/x/mobile/app"
-	"golang.org/x/mobile/exp/app/debug"
+	"golang.org/x/mobile/asset"
 	"golang.org/x/mobile/event"
+	"golang.org/x/mobile/exp/app/debug"
 	"golang.org/x/mobile/exp/f32"
+	"golang.org/x/mobile/exp/gl/glutil"
 	"golang.org/x/mobile/geom"
 	"golang.org/x/mobile/gl"
-	"golang.org/x/mobile/exp/gl/glutil"
 )
 
 func Mat2Float(m *f32.Mat4) []float32 {
@@ -24,16 +28,16 @@ func Mat2Float(m *f32.Mat4) []float32 {
 }
 
 var (
-	program   gl.Program
-	vertCoord gl.Attrib
-	//	vertTexCoord gl.Attrib
-	projection gl.Uniform
-	view       gl.Uniform
-	model      gl.Uniform
-	buf        gl.Buffer
-
-	touchLoc geom.Point
-	started  time.Time
+	program      gl.Program
+	vertCoord    gl.Attrib
+	vertTexCoord gl.Attrib
+	projection   gl.Uniform
+	view         gl.Uniform
+	model        gl.Uniform
+	buf          gl.Buffer
+	texture      gl.Texture
+	touchLoc     geom.Point
+	started      time.Time
 )
 
 func main() {
@@ -44,6 +48,32 @@ func main() {
 		Touch:  touch,
 		Config: config,
 	})
+}
+
+func loadTexture(name string) gl.Texture {
+	imgFile, _ := asset.Open(name)
+	img, _, _ := image.Decode(imgFile)
+
+	rgba := image.NewRGBA(img.Bounds())
+	image_draw.Draw(rgba, rgba.Bounds(), img, image.Point{0, 0}, image_draw.Src)
+
+	newTexture := gl.CreateTexture()
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.BindTexture(gl.TEXTURE_2D, newTexture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TexImage2D(
+		gl.TEXTURE_2D,
+		0,
+		rgba.Rect.Size().X,
+		rgba.Rect.Size().Y,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		rgba.Pix)
+
+	return newTexture
 }
 
 func start() {
@@ -59,10 +89,13 @@ func start() {
 	gl.BufferData(gl.ARRAY_BUFFER, cubeData, gl.STATIC_DRAW)
 
 	vertCoord = gl.GetAttribLocation(program, "vertCoord")
+	vertTexCoord = gl.GetAttribLocation(program, "vertTexCoord")
 
 	projection = gl.GetUniformLocation(program, "projection")
 	view = gl.GetUniformLocation(program, "view")
 	model = gl.GetUniformLocation(program, "model")
+
+	texture = loadTexture("gopher.png")
 
 	started = time.Now()
 }
@@ -83,8 +116,12 @@ func touch(t event.Touch, c event.Config) {
 func draw(c event.Config) {
 	since := time.Now().Sub(started)
 
+	gl.Enable(gl.DEPTH_TEST)
+	gl.DepthFunc(gl.LESS)
+
 	gl.ClearColor(0, 0, 0, 1)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
+	gl.Clear(gl.DEPTH_BUFFER_BIT)
 
 	gl.UseProgram(program)
 
@@ -106,9 +143,12 @@ func draw(c event.Config) {
 	gl.BindBuffer(gl.ARRAY_BUFFER, buf)
 
 	gl.EnableVertexAttribArray(vertCoord)
-	gl.VertexAttribPointer(vertCoord, coordsPerVertex, gl.FLOAT, false, 0, 0)
-	//	gl.EnableVertexAttribArray(texture)
-	//	gl.VertexAttribPointer(vertCoord, texCoordsPerVertex, gl.FLOAT, false, 5, 3)
+	gl.VertexAttribPointer(vertCoord, coordsPerVertex, gl.FLOAT, false, 20, 0) // 4 bytes in float, 5 values per vertex
+
+	gl.EnableVertexAttribArray(vertTexCoord)
+	gl.VertexAttribPointer(vertTexCoord, texCoordsPerVertex, gl.FLOAT, false, 20, 12)
+
+	gl.BindTexture(gl.TEXTURE_2D, texture)
 
 	gl.DrawArrays(gl.TRIANGLES, 0, vertexCount)
 
@@ -120,58 +160,58 @@ func draw(c event.Config) {
 var cubeData = f32.Bytes(binary.LittleEndian,
 	//  X, Y, Z, U, V
 	// Bottom
-	-1.0, -1.0, -1.0,
-	1.0, -1.0, -1.0,
-	-1.0, -1.0, 1.0,
-	1.0, -1.0, -1.0,
-	1.0, -1.0, 1.0,
-	-1.0, -1.0, 1.0,
+	-1.0, -1.0, -1.0, 0.0, 0.0,
+	1.0, -1.0, -1.0, 1.0, 0.0,
+	-1.0, -1.0, 1.0, 0.0, 1.0,
+	1.0, -1.0, -1.0, 1.0, 0.0,
+	1.0, -1.0, 1.0, 1.0, 1.0,
+	-1.0, -1.0, 1.0, 0.0, 1.0,
 
 	// Top
-	-1.0, 1.0, -1.0,
-	-1.0, 1.0, 1.0,
-	1.0, 1.0, -1.0,
-	1.0, 1.0, -1.0,
-	-1.0, 1.0, 1.0,
-	1.0, 1.0, 1.0,
+	-1.0, 1.0, -1.0, 0.0, 0.0,
+	-1.0, 1.0, 1.0, 0.0, 1.0,
+	1.0, 1.0, -1.0, 1.0, 0.0,
+	1.0, 1.0, -1.0, 1.0, 0.0,
+	-1.0, 1.0, 1.0, 0.0, 1.0,
+	1.0, 1.0, 1.0, 1.0, 1.0,
 
 	// Front
-	-1.0, -1.0, 1.0,
-	1.0, -1.0, 1.0,
-	-1.0, 1.0, 1.0,
-	1.0, -1.0, 1.0,
-	1.0, 1.0, 1.0,
-	-1.0, 1.0, 1.0,
+	-1.0, -1.0, 1.0, 1.0, 0.0,
+	1.0, -1.0, 1.0, 0.0, 0.0,
+	-1.0, 1.0, 1.0, 1.0, 1.0,
+	1.0, -1.0, 1.0, 0.0, 0.0,
+	1.0, 1.0, 1.0, 0.0, 1.0,
+	-1.0, 1.0, 1.0, 1.0, 1.0,
 
 	// Back
-	-1.0, -1.0, -1.0,
-	-1.0, 1.0, -1.0,
-	1.0, -1.0, -1.0,
-	1.0, -1.0, -1.0,
-	-1.0, 1.0, -1.0,
-	1.0, 1.0, -1.0,
+	-1.0, -1.0, -1.0, 0.0, 0.0,
+	-1.0, 1.0, -1.0, 0.0, 1.0,
+	1.0, -1.0, -1.0, 1.0, 0.0,
+	1.0, -1.0, -1.0, 1.0, 0.0,
+	-1.0, 1.0, -1.0, 0.0, 1.0,
+	1.0, 1.0, -1.0, 1.0, 1.0,
 
 	// Left
-	-1.0, -1.0, 1.0,
-	-1.0, 1.0, -1.0,
-	-1.0, -1.0, -1.0,
-	-1.0, -1.0, 1.0,
-	-1.0, 1.0, 1.0,
-	-1.0, 1.0, -1.0,
+	-1.0, -1.0, 1.0, 0.0, 1.0,
+	-1.0, 1.0, -1.0, 1.0, 0.0,
+	-1.0, -1.0, -1.0, 0.0, 0.0,
+	-1.0, -1.0, 1.0, 0.0, 1.0,
+	-1.0, 1.0, 1.0, 1.0, 1.0,
+	-1.0, 1.0, -1.0, 1.0, 0.0,
 
 	// Right
-	1.0, -1.0, 1.0,
-	1.0, -1.0, -1.0,
-	1.0, 1.0, -1.0,
-	1.0, -1.0, 1.0,
-	1.0, 1.0, -1.0,
-	1.0, 1.0, 1.0,
+	1.0, -1.0, 1.0, 1.0, 1.0,
+	1.0, -1.0, -1.0, 1.0, 0.0,
+	1.0, 1.0, -1.0, 0.0, 0.0,
+	1.0, -1.0, 1.0, 1.0, 1.0,
+	1.0, 1.0, -1.0, 0.0, 0.0,
+	1.0, 1.0, 1.0, 0.0, 1.0,
 )
 
 var (
 	coordsPerVertex    = 3
 	texCoordsPerVertex = 2
-	vertexCount        = len(cubeData) / coordsPerVertex
+	vertexCount        = len(cubeData) / (coordsPerVertex + texCoordsPerVertex)
 )
 
 const vertexShader = `#version 100
@@ -180,12 +220,22 @@ uniform mat4 view;
 uniform mat4 model;
 
 attribute vec3 vertCoord;
+attribute vec2 vertTexCoord;
+
+varying vec2 fragTexCoord;
 
 void main() {
+	fragTexCoord = vertTexCoord;
     gl_Position = projection * view * model * vec4(vertCoord, 1);
 }`
 
 const fragmentShader = `#version 100
+precision mediump float;
+
+uniform sampler2D tex;
+
+varying vec2 fragTexCoord;
+
 void main() {
-    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    gl_FragColor = texture2D(tex, fragTexCoord);
 }`
