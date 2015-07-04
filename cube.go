@@ -88,9 +88,6 @@ func draw(c event.Config) {
 
 	gl.UseProgram(program)
 
-	identity := &f32.Mat4{}
-	identity.Identity()
-
 	m := &f32.Mat4{}
 	m.Perspective(f32.Radian(0.785), float32(c.Width/c.Height), 0.1, 10.0)
 	gl.UniformMatrix4fv(projection, Mat2Float(m))
