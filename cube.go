@@ -178,7 +178,7 @@ out vec2 fragTexCoord;
 
 void main() {
 //    fragTexCoord = vertTexCoord;
-    gl_Position = projection * view * model * vec4(vert, 1);
+    gl_Position = projection * view * model * vec4(vertCoord, 1);
 }`
 
 const fragmentShader = `#version 330
