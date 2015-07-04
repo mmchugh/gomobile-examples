@@ -167,25 +167,18 @@ const (
 	vertexCount        = 36
 )
 
-const vertexShader = `#version 330
+const vertexShader = `#version 100
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 model;
 
-in vec3 vertCoord;
-//in vec2 vertTexCoord;
-out vec2 fragTexCoord;
+attribute vec3 vertCoord;
 
 void main() {
-//    fragTexCoord = vertTexCoord;
     gl_Position = projection * view * model * vec4(vertCoord, 1);
 }`
 
-const fragmentShader = `#version 330
-uniform sampler2D tex;
-in vec2 fragTexCoord;
-
+const fragmentShader = `#version 100
 void main() {
-//    gl_FragColor = texture(tex, fragTexCoord);
-    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0)
+    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
 }`
