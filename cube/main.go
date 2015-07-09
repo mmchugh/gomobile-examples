@@ -12,71 +12,69 @@ import (
 	"golang.org/x/mobile/gl"
 )
 
-var (
+type Shape struct {
+	buf     gl.Buffer
+	texture gl.Texture
+}
+
+type Shader struct {
 	program      gl.Program
 	vertCoord    gl.Attrib
 	vertTexCoord gl.Attrib
 	projection   gl.Uniform
 	view         gl.Uniform
 	model        gl.Uniform
-	buf          gl.Buffer
-	texture      gl.Texture
-	touchLoc     geom.Point
-	started      time.Time
-)
-
-func main() {
-	app.Run(app.Callbacks{
-		Start:  start,
-		Stop:   stop,
-		Draw:   draw,
-		Touch:  touch,
-		Config: config,
-	})
 }
 
-func start() {
+type Engine struct {
+	shader   Shader
+	shape    Shape
+	touchLoc geom.Point
+	started  time.Time
+}
+
+func (e *Engine) Start() {
 	var err error
 
-	program, err = LoadProgram("shader.v.glsl", "shader.f.glsl")
+	e.shader.program, err = LoadProgram("shader.v.glsl", "shader.f.glsl")
 	if err != nil {
 		panic(fmt.Sprintln("LoadProgram failed:", err))
 	}
 
-	buf = gl.CreateBuffer()
-	gl.BindBuffer(gl.ARRAY_BUFFER, buf)
+	e.shape.buf = gl.CreateBuffer()
+	gl.BindBuffer(gl.ARRAY_BUFFER, e.shape.buf)
 	gl.BufferData(gl.ARRAY_BUFFER, EncodeObject(cubeData), gl.STATIC_DRAW)
 
-	vertCoord = gl.GetAttribLocation(program, "vertCoord")
-	vertTexCoord = gl.GetAttribLocation(program, "vertTexCoord")
+	e.shader.vertCoord = gl.GetAttribLocation(e.shader.program, "vertCoord")
+	e.shader.vertTexCoord = gl.GetAttribLocation(e.shader.program, "vertTexCoord")
 
-	projection = gl.GetUniformLocation(program, "projection")
-	view = gl.GetUniformLocation(program, "view")
-	model = gl.GetUniformLocation(program, "model")
+	e.shader.projection = gl.GetUniformLocation(e.shader.program, "projection")
+	e.shader.view = gl.GetUniformLocation(e.shader.program, "view")
+	e.shader.model = gl.GetUniformLocation(e.shader.program, "model")
 
-	texture, err = LoadTexture("gopher.png")
+	e.shape.texture, err = LoadTexture("gopher.png")
 	if err != nil {
 		panic(fmt.Sprintln("LoadTexture failed:", err))
 	}
 
-	started = time.Now()
+	e.started = time.Now()
 }
 
-func stop() {
-	gl.DeleteProgram(program)
-	gl.DeleteBuffer(buf)
+func (e *Engine) Stop() {
+	gl.DeleteProgram(e.shader.program)
+	gl.DeleteBuffer(e.shape.buf)
 }
 
-func config(new, old event.Config) {
-	touchLoc = geom.Point{new.Width / 2, new.Height / 2}
+func (e *Engine) Config(new, old event.Config) {
+	e.touchLoc = geom.Point{new.Width / 2, new.Height / 2}
 }
 
-func touch(t event.Touch, c event.Config) {
-	touchLoc = t.Loc
+func (e *Engine) Touch(t event.Touch, c event.Config) {
+	e.touchLoc = t.Loc
 }
 
-func draw(c event.Config) {
-	since := time.Now().Sub(started)
+func (e *Engine) Draw(c event.Config) {
+	since := time.Now().Sub(e.started)
 
 	gl.Enable(gl.DEPTH_TEST)
 	gl.DepthFunc(gl.LESS)
@@ -85,34 +83,38 @@ func draw(c event.Config) {
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 	gl.Clear(gl.DEPTH_BUFFER_BIT)
 
-	gl.UseProgram(program)
+	gl.UseProgram(e.shader.program)
 
 	m := mgl.Perspective(0.785, float32(c.Width/c.Height), 0.1, 10.0)
-	gl.UniformMatrix4fv(projection, m[:])
+	gl.UniformMatrix4fv(e.shader.projection, m[:])
 
 	eye := mgl.Vec3{3, 3, 3}
 	center := mgl.Vec3{0, 0, 0}
 	up := mgl.Vec3{0, 1, 0}
 
 	m = mgl.LookAtV(eye, center, up)
-	gl.UniformMatrix4fv(view, m[:])
+	gl.UniformMatrix4fv(e.shader.view, m[:])
 
 	m = mgl.HomogRotate3D(float32(since.Seconds()), mgl.Vec3{0, 1, 0})
-	gl.UniformMatrix4fv(model, m[:])
+	gl.UniformMatrix4fv(e.shader.model, m[:])
 
-	gl.BindBuffer(gl.ARRAY_BUFFER, buf)
+	gl.BindBuffer(gl.ARRAY_BUFFER, e.shape.buf)
 
-	gl.EnableVertexAttribArray(vertCoord)
-	gl.VertexAttribPointer(vertCoord, coordsPerVertex, gl.FLOAT, false, 20, 0) // 4 bytes in float, 5 values per vertex
+	coordsPerVertex := 3
+	texCoordsPerVertex := 2
+	vertexCount := len(cubeData) / (coordsPerVertex + texCoordsPerVertex)
 
-	gl.EnableVertexAttribArray(vertTexCoord)
-	gl.VertexAttribPointer(vertTexCoord, texCoordsPerVertex, gl.FLOAT, false, 20, 12)
+	gl.EnableVertexAttribArray(e.shader.vertCoord)
+	gl.VertexAttribPointer(e.shader.vertCoord, coordsPerVertex, gl.FLOAT, false, 20, 0) // 4 bytes in float, 5 values per vertex
 
-	gl.BindTexture(gl.TEXTURE_2D, texture)
+	gl.EnableVertexAttribArray(e.shader.vertTexCoord)
+	gl.VertexAttribPointer(e.shader.vertTexCoord, texCoordsPerVertex, gl.FLOAT, false, 20, 12)
+
+	gl.BindTexture(gl.TEXTURE_2D, e.shape.texture)
 
 	gl.DrawArrays(gl.TRIANGLES, 0, vertexCount)
 
-	gl.DisableVertexAttribArray(vertCoord)
+	gl.DisableVertexAttribArray(e.shader.vertCoord)
 
 	debug.DrawFPS(c)
 }
@@ -168,8 +170,13 @@ var cubeData = []float32{
 	1.0, 1.0, 1.0, 0.0, 1.0,
 }
 
-var (
-	coordsPerVertex    = 3
-	texCoordsPerVertex = 2
-	vertexCount        = len(cubeData) / (coordsPerVertex + texCoordsPerVertex)
-)
+func main() {
+	e := Engine{}
+	app.Run(app.Callbacks{
+		Start:  e.Start,
+		Stop:   e.Stop,
+		Draw:   e.Draw,
+		Touch:  e.Touch,
+		Config: e.Config,
+	})
+}
