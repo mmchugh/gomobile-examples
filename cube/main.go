@@ -1,31 +1,17 @@
 package main
 
 import (
-	"encoding/binary"
-	"image"
-	image_draw "image/draw"
-	_ "image/png"
 	"log"
 	"time"
 
+	mgl "github.com/go-gl/mathgl/mgl32"
 	"golang.org/x/mobile/app"
-	"golang.org/x/mobile/asset"
 	"golang.org/x/mobile/event"
 	"golang.org/x/mobile/exp/app/debug"
-	"golang.org/x/mobile/exp/f32"
 	"golang.org/x/mobile/exp/gl/glutil"
 	"golang.org/x/mobile/geom"
 	"golang.org/x/mobile/gl"
 )
-
-func Mat2Float(m *f32.Mat4) []float32 {
-	return []float32{
-		m[0][0], m[0][1], m[0][2], m[0][3],
-		m[1][0], m[1][1], m[1][2], m[1][3],
-		m[2][0], m[2][1], m[2][2], m[2][3],
-		m[3][0], m[3][1], m[3][2], m[3][3],
-	}
-}
 
 var (
 	program      gl.Program
@@ -50,32 +36,6 @@ func main() {
 	})
 }
 
-func loadTexture(name string) gl.Texture {
-	imgFile, _ := asset.Open(name)
-	img, _, _ := image.Decode(imgFile)
-
-	rgba := image.NewRGBA(img.Bounds())
-	image_draw.Draw(rgba, rgba.Bounds(), img, image.Point{0, 0}, image_draw.Src)
-
-	newTexture := gl.CreateTexture()
-	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, newTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	gl.TexImage2D(
-		gl.TEXTURE_2D,
-		0,
-		rgba.Rect.Size().X,
-		rgba.Rect.Size().Y,
-		gl.RGBA,
-		gl.UNSIGNED_BYTE,
-		rgba.Pix)
-
-	return newTexture
-}
-
 func start() {
 	var err error
 	program, err = glutil.CreateProgram(vertexShader, fragmentShader)
@@ -86,7 +46,7 @@ func start() {
 
 	buf = gl.CreateBuffer()
 	gl.BindBuffer(gl.ARRAY_BUFFER, buf)
-	gl.BufferData(gl.ARRAY_BUFFER, cubeData, gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, EncodeObject(cubeData), gl.STATIC_DRAW)
 
 	vertCoord = gl.GetAttribLocation(program, "vertCoord")
 	vertTexCoord = gl.GetAttribLocation(program, "vertTexCoord")
@@ -125,20 +85,18 @@ func draw(c event.Config) {
 
 	gl.UseProgram(program)
 
-	m := &f32.Mat4{}
-	m.Perspective(f32.Radian(0.785), float32(c.Width/c.Height), 0.1, 10.0)
-	gl.UniformMatrix4fv(projection, Mat2Float(m))
+	m := mgl.Perspective(0.785, float32(c.Width/c.Height), 0.1, 10.0)
+	gl.UniformMatrix4fv(projection, m[:])
 
-	eye := f32.Vec3{3, 3, 3}
-	center := f32.Vec3{0, 0, 0}
-	up := f32.Vec3{0, 1, 0}
+	eye := mgl.Vec3{3, 3, 3}
+	center := mgl.Vec3{0, 0, 0}
+	up := mgl.Vec3{0, 1, 0}
 
-	m.LookAt(&eye, &center, &up)
-	gl.UniformMatrix4fv(view, Mat2Float(m))
+	m = mgl.LookAtV(eye, center, up)
+	gl.UniformMatrix4fv(view, m[:])
 
-	m.Identity()
-	m.Rotate(m, f32.Radian(since.Seconds()), &f32.Vec3{0, 1, 0})
-	gl.UniformMatrix4fv(model, Mat2Float(m))
+	m = mgl.HomogRotate3D(float32(since.Seconds()), mgl.Vec3{0, 1, 0})
+	gl.UniformMatrix4fv(model, m[:])
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, buf)
 
@@ -157,7 +115,7 @@ func draw(c event.Config) {
 	debug.DrawFPS(c)
 }
 
-var cubeData = f32.Bytes(binary.LittleEndian,
+var cubeData = []float32{
 	//  X, Y, Z, U, V
 	// Bottom
 	-1.0, -1.0, -1.0, 0.0, 0.0,
@@ -206,7 +164,7 @@ var cubeData = f32.Bytes(binary.LittleEndian,
 	1.0, -1.0, 1.0, 1.0, 1.0,
 	1.0, 1.0, -1.0, 0.0, 0.0,
 	1.0, 1.0, 1.0, 0.0, 1.0,
-)
+}
 
 var (
 	coordsPerVertex    = 3
