@@ -1,14 +1,13 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"time"
 
 	mgl "github.com/go-gl/mathgl/mgl32"
 	"golang.org/x/mobile/app"
 	"golang.org/x/mobile/event"
 	"golang.org/x/mobile/exp/app/debug"
-	"golang.org/x/mobile/exp/gl/glutil"
 	"golang.org/x/mobile/geom"
 	"golang.org/x/mobile/gl"
 )
@@ -38,10 +37,10 @@ func main() {
 
 func start() {
 	var err error
-	program, err = glutil.CreateProgram(vertexShader, fragmentShader)
+
+	program, err = LoadProgram("shader.v.glsl", "shader.f.glsl")
 	if err != nil {
-		log.Printf("error creating GL program: %v", err)
-		return
+		panic(fmt.Sprintln("LoadProgram failed:", err))
 	}
 
 	buf = gl.CreateBuffer()
@@ -55,7 +54,10 @@ func start() {
 	view = gl.GetUniformLocation(program, "view")
 	model = gl.GetUniformLocation(program, "model")
 
-	texture = loadTexture("gopher.png")
+	texture, err = LoadTexture("gopher.png")
+	if err != nil {
+		panic(fmt.Sprintln("LoadTexture failed:", err))
+	}
 
 	started = time.Now()
 }
@@ -171,29 +173,3 @@ var (
 	texCoordsPerVertex = 2
 	vertexCount        = len(cubeData) / (coordsPerVertex + texCoordsPerVertex)
 )
-
-const vertexShader = `#version 100
-uniform mat4 projection;
-uniform mat4 view;
-uniform mat4 model;
-
-attribute vec3 vertCoord;
-attribute vec2 vertTexCoord;
-
-varying vec2 fragTexCoord;
-
-void main() {
-	fragTexCoord = vertTexCoord;
-    gl_Position = projection * view * model * vec4(vertCoord, 1);
-}`
-
-const fragmentShader = `#version 100
-precision mediump float;
-
-uniform sampler2D tex;
-
-varying vec2 fragTexCoord;
-
-void main() {
-    gl_FragColor = texture2D(tex, fragTexCoord);
-}`
