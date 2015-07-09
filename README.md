@@ -1,2 +1,7 @@
-# go_mobile_gl_examples
-Some examples for use with go 1.5s opengl package
+# gomobile examples
+
+Examples using the [golang.org/x/mobile](https://godoc.org/golang.org/x/mobile) package.
+
+## License
+
+MIT
