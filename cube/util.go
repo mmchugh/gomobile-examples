@@ -32,6 +32,7 @@ func loadAsset(name string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer a.Close()
 	return ioutil.ReadAll(f)
 }
 
